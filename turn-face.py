@@ -76,7 +76,7 @@ class Application(Frame):
         blank_od.grid(row=1, column=1, sticky=W)
         blank_od.focus_set()
 
-        st2 = Label(self, text='Final Diameter ')
+        st2 = Label(self, text='Internal Diameter ')
         st2.grid(row=2, column=0, sticky=E)
         final_od = Entry(self, width=10, textvariable=self.final_od_var)
         final_od.grid(row=2, column=1, sticky=W)
@@ -163,7 +163,7 @@ class Application(Frame):
             quit_button.grid(row=8, column=5, sticky=E)
 
     def quit_from_axis(self):
-        sys.stdout.write("M2 (Turn-od.py Aborted)")
+        sys.stdout.write("M2 (Turn-face.py Aborted)")
         self.quit()
 
     def write_to_axis(self):
@@ -171,7 +171,7 @@ class Application(Frame):
         self.quit()
 
     def gen_code(self):
-        """ Generate the G-Code turning OD"""
+        """ Generate the G-Code turning face"""
 
         # Define Lathe mode, work with Diameter (not Radius)
         self.g_code.insert(END, '%\n')
@@ -189,66 +189,48 @@ class Application(Frame):
         end_z = self.float_to_decimal(self.end_z_var.get())
         feed_rate = self.float_to_decimal(self.feedrate_var.get())
         retract = self.float_to_decimal(self.safe_var.get())
-        loop_count = int((start_od - end_od - 2 * final_cut_depth) / cut_depth)
+        loop_count = int((start_z - end_z - 2 * final_cut_depth) / cut_depth)
 
         self.g_code.insert(END, 'G0 X%.4f z%.4f\n' % (start_od + 4, start_z + 4))
 
         work_end_z = end_z + 2 * final_cut_depth
-        x_position = start_od
+        z_position = start_z
 
         self.g_code.insert(END, 'G1 X%.4f Z%.4f F%4f\n' % (start_od + retract, start_z + retract, feed_rate))
 
         for i in range(loop_count):
-            x_position -= cut_depth
+            z_position -= cut_depth
             # prepare for next cut
-            self.g_code.insert(END, 'G1 X%.4f F%4f\n' % (x_position, feed_rate))
+            self.g_code.insert(END, 'G1 Z%.4f F%4f\n' % (z_position, feed_rate))
             # work
-            self.g_code.insert(END, 'Z%.4f\n' % work_end_z)
+            self.g_code.insert(END, 'X%.4f\n' % end_od)
             # retract
-            self.g_code.insert(END, 'X%.4f Z%.4f\n' % (x_position + retract, work_end_z + retract))
+            self.g_code.insert(END, 'Z%.4f\n' % (z_position + retract))
             # Rapid to beginning of the work
-            self.g_code.insert(END, 'G0 Z%.4f\n' % (start_z + retract))
+            self.g_code.insert(END, 'G0 X%.4f\n' % (start_od + retract))
 
         # Final cycles
         # pre finish
         self.g_code.insert(END, '\n(Pre Finish cut)\n')
-        x_position = end_od + final_cut_depth
-
+        z_position = end_z + final_cut_depth
+        self.g_code.insert(END, 'G1 Z%.4f F%4f\n' % (z_position, feed_rate / 2))
+        # work
+        self.g_code.insert(END, 'X%.4f\n' % end_od)
+        # retract
+        self.g_code.insert(END, 'Z%.4f\n' % (z_position + retract))
         # Rapid to start OD
         self.g_code.insert(END, 'G0 X%.4f\n' % (start_od + retract))
-        # Pre-finish Z
-        self.g_code.insert(END, 'G1 Z%.4f F%4f\n' % (end_z + final_cut_depth, feed_rate / 2))
-        self.g_code.insert(END, 'X%.4f\n' % x_position)
-        # Retract
-        self.g_code.insert(END, 'X%.4f Z%.4f\n' % (x_position + retract, end_z + final_cut_depth + retract))
-        self.g_code.insert(END, 'G0 Z%.4f\n' % (start_z + retract))
-        # prepare for pre-final cut
-        self.g_code.insert(END, 'G1 X%.4f F%4f\n' % (x_position, feed_rate / 2))
-        # work
-        self.g_code.insert(END, 'Z%.4f\n' % (end_z + final_cut_depth))
-        # retract
-        self.g_code.insert(END, 'X%.4f Z%.4f\n' % (x_position + retract, end_z + final_cut_depth + retract))
-        # Rapid to beginning of the work
-        self.g_code.insert(END, 'G0 Z%.4f\n' % (start_z + retract))
 
         # final cut
         self.g_code.insert(END, '\n(Finish cut)\n')
-        x_position = end_od
+        z_position = end_z
+        self.g_code.insert(END, 'G1 Z%.4f F%4f\n' % (z_position, feed_rate / 2))
+        # work
+        self.g_code.insert(END, 'X%.4f\n' % end_od)
+        # retract
+        self.g_code.insert(END, 'Z%.4f\n' % (z_position + retract))
         # Rapid to start OD
         self.g_code.insert(END, 'G0 X%.4f\n' % (start_od + retract))
-        # Pre-finish Z
-        self.g_code.insert(END, 'G1 Z%.4f F%4f\n' % (end_z, feed_rate / 2))
-        self.g_code.insert(END, 'X%.4f\n' % x_position)
-        # retract
-        self.g_code.insert(END, 'X%.4f Z%.4f\n' % (x_position + retract, end_z + retract))
-        self.g_code.insert(END, 'G0 Z%.4f\n' % (start_z + retract))
-        # prepare for final cut
-        self.g_code.insert(END, 'G1 X%.4f F%4f\n' % (x_position, feed_rate / 2))
-        # work
-        self.g_code.insert(END, 'Z%.4f\n' % end_z)
-        # retract
-        self.g_code.insert(END, 'X%.4f Z%.4f\n' % (x_position + retract, end_z + retract))
-
         # Rapid to beginning of the work
         self.g_code.insert(END, 'G0 X%.4f Z%.4f\n' % (start_od + retract, start_z + retract))
 
@@ -342,18 +324,18 @@ class Application(Frame):
         new_file_name.close()
 
     def load_preferences(self):
-        self.nc_dir = self.get_ini_data('turn_od.ini', 'Directories', 'NcFiles', os.path.expanduser("~"))
-        self.feedrate_var.set(self.get_ini_data('turn_od.ini', 'LatheParameters', 'Feedrate', '100'))
-        self.depth_of_cat_var.set(self.get_ini_data('turn_od.ini', 'LatheParameters', 'DepthOfCut', '0.2'))
-        self.spindle_rpm_var.set(self.get_ini_data('turn_od.ini', 'LatheParameters', 'SpindleRPM', '2500'))
-        self.unit_var.set(int(self.get_ini_data('turn_od.ini', 'LatheParameters', 'UnitVar', '2')))
-        self.home_var.set(int(self.get_ini_data('turn_od.ini', 'LatheParameters', 'HomeVar', '4')))
-        self.safe_var.set(self.get_ini_data('turn_od.ini', 'LatheParameters', 'SafeZ', '1.0'))
-        self.blank_od_var.set(self.get_ini_data('turn_od.ini', 'Part', 'X0'))
-        self.final_od_var.set(self.get_ini_data('turn_od.ini', 'Part', 'X1'))
-        self.depth_of_final_cut_var.set(self.get_ini_data('turn_od.ini', 'LatheParameters', 'DepthOfFinalCut'))
-        self.start_z_var.set(self.get_ini_data('turn_od.ini', 'LatheParameters', 'StartZ'))
-        self.end_z_var.set(self.get_ini_data('turn_od.ini', 'Part', 'EndZ'))
+        self.nc_dir = self.get_ini_data('turn_face.ini', 'Directories', 'NcFiles', os.path.expanduser("~"))
+        self.feedrate_var.set(self.get_ini_data('turn_face.ini', 'LatheParameters', 'Feedrate', '100'))
+        self.depth_of_cat_var.set(self.get_ini_data('turn_face.ini', 'LatheParameters', 'DepthOfCut', '0.1'))
+        self.spindle_rpm_var.set(self.get_ini_data('turn_face.ini', 'LatheParameters', 'SpindleRPM', '2500'))
+        self.unit_var.set(int(self.get_ini_data('turn_face.ini', 'LatheParameters', 'UnitVar', '2')))
+        self.home_var.set(int(self.get_ini_data('turn_face.ini', 'LatheParameters', 'HomeVar', '4')))
+        self.safe_var.set(self.get_ini_data('turn_face.ini', 'LatheParameters', 'SafeZ', '1.0'))
+        self.blank_od_var.set(self.get_ini_data('turn_face.ini', 'Part', 'X0'))
+        self.final_od_var.set(self.get_ini_data('turn_face.ini', 'Part', 'X1'))
+        self.depth_of_final_cut_var.set(self.get_ini_data('turn_face.ini', 'LatheParameters', 'DepthOfFinalCut'))
+        self.start_z_var.set(self.get_ini_data('turn_face.ini', 'LatheParameters', 'StartZ'))
+        self.end_z_var.set(self.get_ini_data('turn_face.ini', 'Part', 'EndZ'))
 
     def save_preferences(self):
         def set_pref(section_name, option_name, option_data):
@@ -362,7 +344,7 @@ class Application(Frame):
             self.cp.set(section_name, option_name, option_data)
 
         self.cp = ConfigParser()
-        fn = open('turn_od.ini', 'w')
+        fn = open('turn_face.ini', 'w')
         set_pref('Directories', 'NcFiles', self.nc_dir)
         set_pref('LatheParameters', 'Feedrate', self.feedrate_var.get())
         set_pref('LatheParameters', 'DepthOfCut', self.depth_of_cat_var.get())
