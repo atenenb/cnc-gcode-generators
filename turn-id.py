@@ -336,7 +336,7 @@ class Application(Frame):
         new_file_name.close()
 
     def load_preferences(self):
-        self.nc_dir = self.get_ini_data('turn_id.ini', 'Directories', 'NcFiles', os.path.expanduser("~"))
+        self.nc_dir = self.get_ini_data('/opt/cnc-gcode-generators/turn_id.ini', 'Directories', 'NcFiles', os.path.expanduser("~"))
         self.feedrate_var.set(self.get_ini_data('turn_id.ini', 'LatheParameters', 'Feedrate', '100'))
         self.depth_of_cat_var.set(self.get_ini_data('turn_id.ini', 'LatheParameters', 'DepthOfCut', '0.1'))
         self.spindle_rpm_var.set(self.get_ini_data('turn_id.ini', 'LatheParameters', 'SpindleRPM', '2500'))
@@ -356,7 +356,8 @@ class Application(Frame):
             self.cp.set(section_name, option_name, option_data)
 
         self.cp = ConfigParser()
-        fn = open('turn_id.ini', 'w')
+        os.makedirs('/opt/cnc-gcode-generators', mode=0o755, exist_ok=True)
+        fn = open('/opt/cnc-gcode-generators/turn_id.ini', 'w')
         set_pref('Directories', 'NcFiles', self.nc_dir)
         set_pref('LatheParameters', 'Feedrate', self.feedrate_var.get())
         set_pref('LatheParameters', 'DepthOfCut', self.depth_of_cat_var.get())
